@@ -22,3 +22,5 @@ df_reviews = pd.read_csv('steam_dataset_2025_csv/reviews.csv')
 
 print('\nprint reviews head')
 print(df_reviews.head())
+
+print('test')
