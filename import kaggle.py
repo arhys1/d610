@@ -6,7 +6,7 @@ with zipfile.ZipFile('steam-games-dataset-2025.zip', 'r') as z:
     z.extractall('.')
 
 # open applications as df
-df_applications = pd.read_csv('steam_dataset_2025_csv/applications.csv')
+df_applications = pd.read_csv('steam_dataset_2025_csv/applications.csv', low_memory=False)
 
 print('\nprint applications head')
 print(df_applications.head())
