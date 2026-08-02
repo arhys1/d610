@@ -1,14 +1,14 @@
+# ==============================================================================================
+# The purpose of this .py file is to import the data from the ZIP file downloaded from Kaggle
+# and to view info, heads, and lists to preview the structure of the data.
+# ==============================================================================================
+
 import zipfile, pandas as pd
 
 with zipfile.ZipFile('steam-games-dataset-2025.zip', 'r') as z:
     print('\nSHOW FILES IN ZIP')
     print(z.namelist())  # shows all files in the zip
     z.extractall('.')
-
-# ==============================================================================================
-# The purpose of this .py file is to import the data from the ZIP file downloaded from Kaggle
-# and to view info, heads, and lists to preview the structure of the data.
-# ==============================================================================================
 
 # open applications as df
 df_applications = pd.read_csv('steam_dataset_2025_csv/applications.csv', low_memory=False)
