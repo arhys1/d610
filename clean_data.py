@@ -208,29 +208,29 @@ GENRE_TO_ENGLISH = {
     "Web-Publishing": "Web Publishing",
 }
 
-
-def add_english_genre_column(df_genre_english: pd.DataFrame,
+def add_english_genre_column(df_genre: pd.DataFrame,
                               source_col: str = SOURCE_COL,
                               target_col: str = TARGET_COL) -> pd.DataFrame:
     """
     Adds an English-language genre column to df_genre based on GENRE_TO_ENGLISH.
     Unmapped values become NaN so they're easy to spot and investigate.
-    Names new dataframe df_genre2.
     """
-    df_genre_english[target_col] = df_genre_english[source_col].map(GENRE_TO_ENGLISH)
+    df_genre[target_col] = df_genre[source_col].map(GENRE_TO_ENGLISH)
 
-    unmapped = df_genre_english.loc[df_genre_english[target_col].isna(), source_col].dropna().unique()
+    unmapped = df_genre.loc[df_genre[target_col].isna(), source_col].dropna().unique()
     if len(unmapped) > 0:
         print(f"Warning: {len(unmapped)} unmapped genre value(s) found:")
         for val in unmapped:
             print(f"  - {val!r}")
 
-    return df_genre_english
+    return df_genre
 
-## test map_genre_to_english() and print results
+## test add_english_genre_column() and print results
 if __name__ == "__main__":
-    df_applications, df_genre, df_reviews = load_steam_data()
+    df_applications, df_genre, df_reviews, df_application_genres = load_steam_data()
     df_genre_english = add_english_genre_column(df_genre)
+
+    print('\n###TEST FUNCTION ADD_ENGLISH_GENRE_COLUMN###')
 
     print('\nPRINT GENRE HEAD WITH ENGLISH COLUMN')
     print(df_genre_english.head())
@@ -242,3 +242,56 @@ if __name__ == "__main__":
     for genre in sorted(df_genre_english['genre_english'].unique()):
         print(genre)
     print(df_genre_english['genre_english'].nunique())
+
+## build a new df to house the 35 unique English genres
+def build_english_genre_lookup(df_genre_english):
+    """
+    Builds a lookup table of distinct English genre categories, each with its own id.
+    Also returns df_genre_english with an english_genre_id column added,
+    mapping each original genre id to its English category id.
+    """
+    distinct_english = sorted(df_genre_english['genre_english'].dropna().unique())
+    df_english_genres = pd.DataFrame({
+        'id': range(1, len(distinct_english) + 1),
+        'name': distinct_english,
+    })
+
+    name_to_id = dict(zip(df_english_genres['name'], df_english_genres['id']))
+    df_genre_english['english_genre_id'] = df_genre_english['genre_english'].map(name_to_id)
+
+    return df_genre_english, df_english_genres
+
+## update the df_application_genres CSV to include the English ID
+def map_app_genres_to_english(df_application_genres, df_genre_english):
+    """
+    Adds an english_genre_id column to df_application_genres by joining on genre_id.
+    """
+    df_application_genres = df_application_genres.merge(
+        df_genre_english[['id', 'english_genre_id']],
+        left_on='genre_id',
+        right_on='id',
+        how='left'
+    )
+    df_application_genres = df_application_genres.drop(columns=['id'])
+
+    unmapped = df_application_genres['english_genre_id'].isna().sum()
+    if unmapped > 0:
+        print(f"Warning: {unmapped} rows in application_genres had no matching genre_id")
+
+    return df_application_genres
+
+## test build_english_genre_lookup() and map_app_genres_to_english()
+if __name__ == "__main__":
+    df_applications, df_genre, df_reviews, df_application_genres = load_steam_data()
+
+    df_genre_english = add_english_genre_column(df_genre)
+    df_genre_english, df_english_genres = build_english_genre_lookup(df_genre_english)
+    df_application_genres = map_app_genres_to_english(df_application_genres, df_genre_english)
+
+    print('\n###TEST FUNCTIONS BUILD_ENGLISH_GENRE_LOOKUP AND MAP_APP_GENRES_TO_ENGLISH###')
+
+    print('\nPRINT ALL ENGLISH GENRES')
+    print(df_english_genres.to_string())
+
+    print('\nPRINT APPLICATION_GENRES HEAD')
+    print(df_application_genres.head())

@@ -17,8 +17,10 @@ def load_steam_data():
     df_genre = pd.read_csv('steam_dataset_2025_csv/genres.csv')
     # open reviews as df
     df_reviews = pd.read_csv('steam_dataset_2025_csv/reviews.csv')
+    # open application genres as df
+    df_application_genres = pd.read_csv('steam_dataset_2025_csv/application_genres.csv')
 
-    return df_applications, df_genre, df_reviews
+    return df_applications, df_genre, df_reviews, df_application_genres
 
 ## test load_steam_data() and print df info
 if __name__ == "__main__":
