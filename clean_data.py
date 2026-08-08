@@ -3,8 +3,9 @@
 # ==============================================================================================
 
 import pandas as pd
+from import_data import load_steam_data
 
-#### map non-English genre names to English genres ####
+#### map non-English genre names to English genres; set up dictionary####
 
 # --- Column names -----------------------------------
 SOURCE_COL = "name"          # column in df_genre holding the raw genre text
@@ -208,19 +209,36 @@ GENRE_TO_ENGLISH = {
 }
 
 
-def add_english_genre_column(df: pd.DataFrame,
+def add_english_genre_column(df_genre_english: pd.DataFrame,
                               source_col: str = SOURCE_COL,
                               target_col: str = TARGET_COL) -> pd.DataFrame:
     """
-    Adds an English-language genre column to df based on GENRE_TO_ENGLISH.
+    Adds an English-language genre column to df_genre based on GENRE_TO_ENGLISH.
     Unmapped values become NaN so they're easy to spot and investigate.
+    Names new dataframe df_genre2.
     """
-    df[target_col] = df[source_col].map(GENRE_TO_ENGLISH)
+    df_genre_english[target_col] = df_genre_english[source_col].map(GENRE_TO_ENGLISH)
 
-    unmapped = df.loc[df[target_col].isna(), source_col].dropna().unique()
+    unmapped = df_genre_english.loc[df_genre_english[target_col].isna(), source_col].dropna().unique()
     if len(unmapped) > 0:
         print(f"Warning: {len(unmapped)} unmapped genre value(s) found:")
         for val in unmapped:
             print(f"  - {val!r}")
 
-    return df
+    return df_genre_english
+
+## test map_genre_to_english() and print results
+if __name__ == "__main__":
+    df_applications, df_genre, df_reviews = load_steam_data()
+    df_genre_english = add_english_genre_column(df_genre)
+
+    print('\nPRINT GENRE HEAD WITH ENGLISH COLUMN')
+    print(df_genre_english.head())
+
+    print('\nCHECK FOR UNMAPPED VALUES')
+    print(df_genre_english['genre_english'].isna().sum(), "unmapped rows")
+
+    print('\nLIST ALL ENGLISH GENRES')
+    for genre in sorted(df_genre_english['genre_english'].unique()):
+        print(genre)
+    print(df_genre_english['genre_english'].nunique())
