@@ -6,6 +6,8 @@
 import zipfile, pandas as pd
 
 def load_steam_data():
+    """imports the dataset from Kaggle and defines data frames for applications,
+    genres, and reviews"""
     with zipfile.ZipFile('steam-games-dataset-2025.zip', 'r') as z:
         z.extractall('.')
 
@@ -18,7 +20,7 @@ def load_steam_data():
 
     return df_applications, df_genre, df_reviews
 
-## test load_steam_data() function and print df info
+## test load_steam_data() and print df info
 if __name__ == "__main__":
     df_applications, df_genre, df_reviews = load_steam_data()
 
@@ -47,4 +49,3 @@ if __name__ == "__main__":
 
     print('\nPRINT REVIEWS HEAD')
     print(df_reviews.head())
-
