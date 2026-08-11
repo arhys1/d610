@@ -295,3 +295,85 @@ if __name__ == "__main__":
 
     print('\nPRINT APPLICATION_GENRES HEAD')
     print(df_application_genres.head())
+
+#### remove free-to-play games as well as demos and dlc ####
+
+## check unique values before filtering out free-to-play games and DLC
+if __name__ == "__main__":
+    df_applications, df_genre, df_reviews, df_application_genres = load_steam_data()
+
+    print('\n###CHECK UNIQUE GAME TYPES BEFORE FILTERING###')
+
+    print('\nUNIQUE VALUES IN "type"')
+    print(df_applications['type'].unique())
+
+    print('\nUNIQUE VALUES IN "is_free"')
+    print(df_applications['is_free'].unique())
+
+## define function filter_paid_games
+def filter_paid_games(df_applications):
+    """
+    Keeps only rows in df_applications where type == 'game' and is_free == False.
+    Removes free-to-play games and non-game entries (e.g. dlc, demo, video).
+    """
+    before_count = len(df_applications)
+
+    df_applications = df_applications[
+        (df_applications['type'] == 'game') & (df_applications['is_free'] == False)
+    ]
+
+    after_count = len(df_applications)
+    print(f"Removed {before_count - after_count} rows ({before_count} -> {after_count})")
+
+    return df_applications
+
+## test function filter_paid_games
+if __name__ == "__main__":
+    df_applications, df_genre, df_reviews, df_application_genres = load_steam_data()
+
+    print('\n###TEST FILTER_PAID_GAMES###')
+    df_applications = filter_paid_games(df_applications)
+
+    print('\nUNIQUE VALUES IN "type" AFTER FILTER')
+    print(df_applications['type'].unique())
+
+    print('\nUNIQUE VALUES IN "is_free" AFTER FILTER')
+    print(df_applications['is_free'].unique())
+
+#### remove games where currency is not USD ####
+
+## check unique values before filtering out non-USD currency
+if __name__ == "__main__":
+    df_applications, df_genre, df_reviews, df_application_genres = load_steam_data()
+    df_applications = filter_paid_games(df_applications)
+
+    print('\n###CHECK UNIQUE CURRENCIES BEFORE FILTERING###')
+
+    print('\nUNIQUE VALUES IN "mat_currency"')
+    print(df_applications['mat_currency'].unique())
+
+## define function filter_usd_currency
+def filter_usd_currency(df_applications):
+    """
+    Keeps only rows in df_applications where mat_currency == 'USD'.
+    Rows with a non-USD currency or a missing (NaN) currency are removed.
+    """
+    before_count = len(df_applications)
+
+    df_applications = df_applications[df_applications['mat_currency'] == 'USD']
+
+    after_count = len(df_applications)
+    print(f"Removed {before_count - after_count} rows ({before_count} -> {after_count})")
+
+    return df_applications
+
+## test filter_usd_currency()
+if __name__ == "__main__":
+    df_applications, df_genre, df_reviews, df_application_genres = load_steam_data()
+    df_applications = filter_paid_games(df_applications)
+    df_applications = filter_usd_currency(df_applications)
+
+    print('\n###TEST FILTER_USD_CURRENCY###')
+
+    print('\nUNIQUE VALUES IN "mat_currency" AFTER FILTER')
+    print(df_applications['mat_currency'].unique())
