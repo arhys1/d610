@@ -444,3 +444,74 @@ if __name__ == "__main__":
 
     print('\nMIN AND MAX release_year AFTER FILTER')
     print(df_applications['release_year'].min(), '-', df_applications['release_year'].max())
+
+#### build final analysis-ready dataframe with only relevant columns ####
+
+def build_analysis_df(df_applications, df_application_genres):
+    """
+    Merges df_applications with df_application_genres to bring in english_genre_id,
+    then selects only the columns needed for analysis.
+    Note: a game with multiple genres will appear as multiple rows (one per genre),
+    as is done in the original dataset.
+    """
+    merged = df_applications.merge(
+        df_application_genres[['appid', 'english_genre_id']],
+        on='appid',
+        how='left'
+    )
+
+    relevant_cols = [
+        'appid', 'name', 'english_genre_id', 'release_date', 'release_year',
+        'metacritic_score', 'recommendations_total',
+        'mat_initial_price', 'mat_final_price', 'mat_discount_percent'
+    ]
+    df = merged[relevant_cols].copy()
+
+    return df
+
+def drop_null_key_columns(df):
+    """
+    Drops rows with null values in the most important columns
+    (appid, name, mat_initial_price, mat_final_price, mat_discount_percent).
+    Leaves metacritic_score and recommendations_total untouched, since a
+    high proportion of rows are missing that data but the rest of the row
+    still holds valuable information.
+    """
+    before_count = len(df)
+
+    key_cols = ['appid', 'name', 'mat_initial_price', 'mat_final_price', 'mat_discount_percent']
+    df = df.dropna(subset=key_cols).copy()
+
+    after_count = len(df)
+    print(f"Removed {before_count - after_count} rows ({before_count} -> {after_count}) with drop_null_key_columns")
+
+    return df
+
+## test build_analysis_df() and drop_null_key_columns()
+if __name__ == "__main__":
+    df_applications, df_genre, df_reviews, df_application_genres = load_steam_data()
+    df_applications = filter_paid_games(df_applications)
+    df_applications = filter_usd_currency(df_applications)
+    df_applications = add_release_year_column(df_applications)
+    df_applications = filter_release_year(df_applications)
+
+    df_genre_english = add_english_genre_column(df_genre)
+    df_genre_english, df_english_genres = build_english_genre_lookup(df_genre_english)
+    df_application_genres = map_app_genres_to_english(df_application_genres, df_genre_english)
+
+    df = build_analysis_df(df_applications, df_application_genres)
+
+    print('\n###CHECK NULL COUNTS BEFORE DROPPING###')
+    print(df.isna().sum())
+
+    df = drop_null_key_columns(df)
+
+    print('\n###TEST BUILD_ANALYSIS_DF AND DROP_NULL_KEY_COLUMNS###')
+    print('\nHEAD OF df')
+    print(df.head())
+
+    print('\nSHAPE OF df')
+    print(df.shape)
+
+    print('\nNULL COUNTS REMAINING (metacritic_score, recommendations_total, genre expected to have some)')
+    print(df[['metacritic_score', 'recommendations_total', 'english_genre_id']].isna().sum())
