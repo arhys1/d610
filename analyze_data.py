@@ -44,7 +44,7 @@ if __name__ == "__main__":
     df = add_genre_dummies(df, df_application_genres, df_english_genres)
     after_rows = len(df)
 
-    print(f'\nROW COUNT BEFORE: {before_rows}, AFTER: {after_rows} (should match — one row per game)')
+    print(f'\nROW COUNT BEFORE: {before_rows}, AFTER: {after_rows} (these should match — one row per game)')
 
     print('\nCOLUMNS AFTER ADDING DUMMIES')
     print(df.columns.tolist())
@@ -55,4 +55,4 @@ if __name__ == "__main__":
     print('\nSAMPLE ROW WHERE A GAME HAS MULTIPLE GENRES TRUE')
     genre_cols = [c for c in df.columns if c.startswith('genre_')]
     multi_genre_sample = df[df[genre_cols].sum(axis=1) > 1]
-    print(multi_genre_sample[['appid', 'name'] + genre_cols].head())
+    print(multi_genre_sample[['appid', 'name'] + genre_cols].head().to_string())
