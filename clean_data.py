@@ -507,7 +507,7 @@ if __name__ == "__main__":
     print(df.shape)
 
     print('\nNULL COUNTS REMAINING (metacritic_score, recommendations_total, genre expected to have some)')
-    print(df[['metacritic_score', 'recommendations_total', 'english_genre_id']].isna().sum())
+    print(df[['metacritic_score', 'recommendations_total']].isna().sum())
 
 ## define a cleaning pipeline to clean up the functions list
 def run_cleaning_pipeline():

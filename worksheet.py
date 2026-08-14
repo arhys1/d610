@@ -17,17 +17,11 @@ if __name__ == "__main__":
 
     df = build_analysis_df(df_applications, df_application_genres)
 
-    print('\n###CHECK NULL COUNTS BEFORE DROPPING###')
-    print(df.isna().sum())
-
-    df = drop_null_key_columns(df)
-
-    print('\n###TEST BUILD_ANALYSIS_DF AND DROP_NULL_KEY_COLUMNS###')
-    print('\nHEAD OF df')
+    print(df_genre_english.head())
     print(df.head())
-
-    print('\nSHAPE OF df')
-    print(df.shape)
-
-    print('\nNULL COUNTS REMAINING (metacritic_score, recommendations_total, genre expected to have some)')
-    print(df[['metacritic_score', 'recommendations_total', 'english_genre_id']].isna().sum())
+    print(df.info())
+    print(df_application_genres.head())
+    print(df_application_genres.info())
+    print(df_english_genres.describe())
+    print(df_english_genres.head())
+    print(df_english_genres.info())
