@@ -4,6 +4,11 @@
 
 import pandas as pd
 from clean_data import run_cleaning_pipeline
+import statsmodels.api as sm
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score, mean_squared_error
+
+### build genre_multihot encoding
 
 def build_genre_multihot(df_application_genres, df_english_genres):
     """
@@ -35,7 +40,73 @@ def add_genre_dummies(df, df_application_genres, df_english_genres):
 
     return df
 
-## test build_genre_multihot() and add_genre_dummies()
+### build regression pipeline
+def prepare_regression_data(df, target_col='mat_initial_price', drop_feature_cols=None):
+    """
+    Builds X (features) and y (target) for regression.
+    Drops identifier/non-feature columns and the other price-related
+    columns (to avoid leaking the target through mat_final_price /
+    mat_discount_percent).
+    Drops rows with nulls in any remaining feature columns, since OLS
+    cannot fit on missing values.
+    Creates a drop_feature_cols list to remove columns with many nulls for a more robust analysis on other variables.
+    """
+    drop_cols = ['appid', 'name', 'release_date', 'mat_final_price', 'mat_discount_percent']
+    if drop_feature_cols:
+        drop_cols += drop_feature_cols
+
+    model_df = df.drop(columns=drop_cols)
+
+    before_count = len(model_df)
+    model_df = model_df.dropna()
+    after_count = len(model_df)
+    print(f"Dropped {before_count - after_count} rows with missing values in remaining feature columns "
+          f"({before_count} -> {after_count})")
+
+    genre_cols = [c for c in model_df.columns if c.startswith('genre_')]
+    model_df[genre_cols] = model_df[genre_cols].astype(int)
+
+    y = model_df[target_col]
+    X = model_df.drop(columns=[target_col])
+
+    return X, y
+
+def split_data(X, y, test_size=0.2, random_state=42):
+    """
+    Splits X and y into train/test sets. random_state fixes the split
+    so results are reproducible across runs.
+    """
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=random_state
+    )
+    return X_train, X_test, y_train, y_test
+
+def fit_ols_model(X_train, y_train):
+    """
+    Fits an OLS regression model using statsmodels, which provides
+    coefficients, p-values, R-squared, and a full summary table.
+    """
+    X_train_const = sm.add_constant(X_train)
+    model = sm.OLS(y_train, X_train_const).fit()
+    return model
+
+def evaluate_model(model, X_test, y_test):
+    """
+    Evaluates the fitted model on held-out test data using R-squared
+    and RMSE.
+    """
+    X_test_const = sm.add_constant(X_test)
+    predictions = model.predict(X_test_const)
+
+    r2 = r2_score(y_test, predictions)
+    rmse = mean_squared_error(y_test, predictions) ** 0.5
+
+    print(f"Test R-squared: {r2:.4f}")
+    print(f"Test RMSE: {rmse:.4f}")
+
+    return r2, rmse
+
+## test full pipeline: genre dummies, then both regression models
 if __name__ == "__main__":
     df, df_application_genres, df_english_genres = run_cleaning_pipeline()
 
@@ -56,3 +127,19 @@ if __name__ == "__main__":
     genre_cols = [c for c in df.columns if c.startswith('genre_')]
     multi_genre_sample = df[df[genre_cols].sum(axis=1) > 1]
     print(multi_genre_sample[['appid', 'name'] + genre_cols].head().to_string())
+
+    print('\n###MODEL 1: WITH METACRITIC_SCORE AND RECOMMENDATIONS_TOTAL###')
+    X_full, y_full = prepare_regression_data(df)
+    X_train_full, X_test_full, y_train_full, y_test_full = split_data(X_full, y_full)
+    model_full = fit_ols_model(X_train_full, y_train_full)
+    print(model_full.summary())
+    evaluate_model(model_full, X_test_full, y_test_full)
+
+    print('\n###MODEL 2: WITHOUT METACRITIC_SCORE AND RECOMMENDATIONS_TOTAL###')
+    X_reduced, y_reduced = prepare_regression_data(
+        df, drop_feature_cols=['metacritic_score', 'recommendations_total']
+    )
+    X_train_reduced, X_test_reduced, y_train_reduced, y_test_reduced = split_data(X_reduced, y_reduced)
+    model_reduced = fit_ols_model(X_train_reduced, y_train_reduced)
+    print(model_reduced.summary())
+    evaluate_model(model_reduced, X_test_reduced, y_test_reduced)
