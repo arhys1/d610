@@ -513,7 +513,8 @@ if __name__ == "__main__":
 def run_cleaning_pipeline():
     """
     Runs the full import + cleaning pipeline end to end and returns the
-    analysis-ready dataframe along with the English genre lookup table.
+    analysis-ready dataframe (one row per game), the application-genre
+    junction table, and the English genre lookup table.
     """
     df_applications, df_genre, df_reviews, df_application_genres = load_steam_data()
 
@@ -529,12 +530,11 @@ def run_cleaning_pipeline():
     df = build_analysis_df(df_applications)
     df = drop_null_key_columns(df)
 
-    return df, df_english_genres
+    return df, df_application_genres, df_english_genres
 
-
-## test run_cleaning_pipeline() (run in a worksheet)
+## test run_cleaning_pipeline() (copy and run in a worksheet)
 if __name__ == "__main__":
-    df, df_english_genres = run_cleaning_pipeline()
+    df, df_application_genres, df_english_genres = run_cleaning_pipeline()
 
     print('\n###TEST RUN_CLEANING_PIPELINE###')
 
