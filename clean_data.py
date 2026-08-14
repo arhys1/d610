@@ -447,25 +447,18 @@ if __name__ == "__main__":
 
 #### build final analysis-ready dataframe with only relevant columns ####
 
-def build_analysis_df(df_applications, df_application_genres):
+def build_analysis_df(df_applications):
     """
-    Merges df_applications with df_application_genres to bring in english_genre_id,
-    then selects only the columns needed for analysis.
-    Note: a game with multiple genres will appear as multiple rows (one per genre),
-    as is done in the original dataset.
+    Selects only the columns needed for analysis from df_applications.
+    Genre is added separately via build_genre_multihot, since a game can
+    belong to multiple genres.
     """
-    merged = df_applications.merge(
-        df_application_genres[['appid', 'english_genre_id']],
-        on='appid',
-        how='left'
-    )
-
     relevant_cols = [
-        'appid', 'name', 'english_genre_id', 'release_date', 'release_year',
+        'appid', 'name', 'release_date', 'release_year',
         'metacritic_score', 'recommendations_total',
         'mat_initial_price', 'mat_final_price', 'mat_discount_percent'
     ]
-    df = merged[relevant_cols].copy()
+    df = df_applications[relevant_cols].copy()
 
     return df
 
@@ -499,7 +492,7 @@ if __name__ == "__main__":
     df_genre_english, df_english_genres = build_english_genre_lookup(df_genre_english)
     df_application_genres = map_app_genres_to_english(df_application_genres, df_genre_english)
 
-    df = build_analysis_df(df_applications, df_application_genres)
+    df = build_analysis_df(df_applications)
 
     print('\n###CHECK NULL COUNTS BEFORE DROPPING###')
     print(df.isna().sum())
@@ -515,3 +508,41 @@ if __name__ == "__main__":
 
     print('\nNULL COUNTS REMAINING (metacritic_score, recommendations_total, genre expected to have some)')
     print(df[['metacritic_score', 'recommendations_total', 'english_genre_id']].isna().sum())
+
+## define a cleaning pipeline to clean up the functions list
+def run_cleaning_pipeline():
+    """
+    Runs the full import + cleaning pipeline end to end and returns the
+    analysis-ready dataframe along with the English genre lookup table.
+    """
+    df_applications, df_genre, df_reviews, df_application_genres = load_steam_data()
+
+    df_applications = filter_paid_games(df_applications)
+    df_applications = filter_usd_currency(df_applications)
+    df_applications = add_release_year_column(df_applications)
+    df_applications = filter_release_year(df_applications)
+
+    df_genre_english = add_english_genre_column(df_genre)
+    df_genre_english, df_english_genres = build_english_genre_lookup(df_genre_english)
+    df_application_genres = map_app_genres_to_english(df_application_genres, df_genre_english)
+
+    df = build_analysis_df(df_applications)
+    df = drop_null_key_columns(df)
+
+    return df, df_english_genres
+
+
+## test run_cleaning_pipeline() (run in a worksheet)
+if __name__ == "__main__":
+    df, df_english_genres = run_cleaning_pipeline()
+
+    print('\n###TEST RUN_CLEANING_PIPELINE###')
+
+    print('\nHEAD OF df')
+    print(df.head())
+
+    print('\nSHAPE OF df')
+    print(df.shape)
+
+    print('\nHEAD OF df_english_genres')
+    print(df_english_genres.head())
