@@ -84,6 +84,9 @@ def prepare_regression_data(df, target_col='mat_final_price', drop_feature_cols=
               f"True values: {rare_genre_cols}")
         model_df = model_df.drop(columns=rare_genre_cols)
 
+    if 'genre_Free to Play' in model_df.columns:
+        model_df = model_df.drop(columns=['genre_Free to Play'])
+
     model_df['release_year'] = model_df['release_year'] - 2003
 
     y = model_df[target_col]
