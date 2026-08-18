@@ -480,6 +480,19 @@ def drop_null_key_columns(df):
 
     return df
 
+## update price from cents to dollars
+def convert_price_to_dollars(df):
+    """
+    Converts mat_initial_price and mat_final_price from cents to dollars.
+    The raw values (e.g. 599, 999, 190000) match Steam's actual price points
+    when divided by 100 (e.g. $5.99, $9.99, $1900.00), indicating the source
+    data stores price in cents rather than dollars.
+    """
+    df = df.copy()
+    df['mat_initial_price'] = df['mat_initial_price'] / 100
+    df['mat_final_price'] = df['mat_final_price'] / 100
+    return df
+
 ## test build_analysis_df() and drop_null_key_columns()
 if __name__ == "__main__":
     df_applications, df_genre, df_reviews, df_application_genres = load_steam_data()
@@ -529,8 +542,25 @@ def run_cleaning_pipeline():
 
     df = build_analysis_df(df_applications)
     df = drop_null_key_columns(df)
+    df = convert_price_to_dollars(df)
 
     return df, df_application_genres, df_english_genres
+
+## check for price outliers
+def investigate_price_outliers(df, price_col='mat_final_price'):
+    """
+    Prints summary statistics and the most extreme values for price,
+    to check for outliers that could distort downstream analysis.
+    """
+    print(f'\nDESCRIBE {price_col}')
+    print(df[price_col].describe())
+
+    print(f'\nTOP 20 MOST EXPENSIVE GAMES')
+    print(df.nlargest(20, price_col)[['appid', 'name', price_col]].to_string())
+
+    print(f'\nPERCENTILES')
+    for p in [0.90, 0.95, 0.99, 0.999]:
+        print(f'{int(p*100)}th percentile: {df[price_col].quantile(p):.2f}')
 
 ## test run_cleaning_pipeline() (copy and run in a worksheet)
 if __name__ == "__main__":
@@ -546,3 +576,6 @@ if __name__ == "__main__":
 
     print('\nHEAD OF df_english_genres')
     print(df_english_genres.head())
+
+    print('\n###INVESTIGATE PRICE OUTLIERS###')
+    investigate_price_outliers(df)
