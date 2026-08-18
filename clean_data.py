@@ -560,7 +560,7 @@ def investigate_price_outliers(df, price_col='mat_final_price'):
 
     print(f'\nPERCENTILES')
     for p in [0.90, 0.95, 0.99, 0.999]:
-        print(f'{int(p*100)}th percentile: {df[price_col].quantile(p):.2f}')
+        print(f'{p * 100:.1f}th percentile: {df[price_col].quantile(p):.2f}')
 
 ## test run_cleaning_pipeline() (copy and run in a worksheet)
 if __name__ == "__main__":

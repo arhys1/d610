@@ -7,6 +7,7 @@ from clean_data import run_cleaning_pipeline
 import statsmodels.api as sm
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error
+import numpy as np
 
 ### build genre_multihot encoding
 
@@ -41,17 +42,20 @@ def add_genre_dummies(df, df_application_genres, df_english_genres):
     return df
 
 ### build regression pipeline
-def prepare_regression_data(df, target_col='mat_initial_price', drop_feature_cols=None):
+def prepare_regression_data(df, target_col='mat_final_price', drop_feature_cols=None):
     """
     Builds X (features) and y (target) for regression.
     Drops identifier/non-feature columns and the other price-related
-    columns (to avoid leaking the target through mat_final_price /
+    columns (to avoid leaking the target through mat_initial_price /
     mat_discount_percent).
     Drops rows with nulls in any remaining feature columns, since OLS
     cannot fit on missing values.
     Creates a drop_feature_cols list to remove columns with many nulls for a more robust analysis on other variables.
+    If log_transform_target is True, applies np.log() to the target column,
+    since price is right-skewed. Coefficients on a log-transformed target
+    represent approximate percentage effects rather than dollar effects.
     """
-    drop_cols = ['appid', 'name', 'release_date', 'mat_final_price', 'mat_discount_percent']
+    drop_cols = ['appid', 'name', 'release_date', 'mat_initial_price', 'mat_discount_percent']
     if drop_feature_cols:
         drop_cols += drop_feature_cols
 
@@ -67,6 +71,8 @@ def prepare_regression_data(df, target_col='mat_initial_price', drop_feature_col
     model_df[genre_cols] = model_df[genre_cols].astype(int)
 
     y = model_df[target_col]
+    if log_transform_target:
+        y = np.log(y)
     X = model_df.drop(columns=[target_col])
 
     return X, y
@@ -90,13 +96,19 @@ def fit_ols_model(X_train, y_train):
     model = sm.OLS(y_train, X_train_const).fit()
     return model
 
-def evaluate_model(model, X_test, y_test):
+def evaluate_model(model, X_test, y_test, log_transformed=False):
     """
     Evaluates the fitted model on held-out test data using R-squared
-    and RMSE.
+    and RMSE. If log_transformed is True, exponentiates both predictions
+    and actuals back to dollar scale before computing RMSE, so the error
+    is reported in real dollars rather than log-dollars.
     """
     X_test_const = sm.add_constant(X_test)
     predictions = model.predict(X_test_const)
+
+    if log_transformed:
+        predictions = np.exp(predictions)
+        y_test = np.exp(y_test)
 
     r2 = r2_score(y_test, predictions)
     rmse = mean_squared_error(y_test, predictions) ** 0.5
@@ -143,3 +155,12 @@ if __name__ == "__main__":
     model_reduced = fit_ols_model(X_train_reduced, y_train_reduced)
     print(model_reduced.summary())
     evaluate_model(model_reduced, X_test_reduced, y_test_reduced)
+
+    print('\n###MODEL 3: LOG-TRANSFORMED TARGET (WITHOUT METACRITIC_SCORE/RECOMMENDATIONS_TOTAL)###')
+    X_log, y_log = prepare_regression_data(
+        df, drop_feature_cols=['metacritic_score', 'recommendations_total'], log_transform_target=True
+    )
+    X_train_log, X_test_log, y_train_log, y_test_log = split_data(X_log, y_log)
+    model_log = fit_ols_model(X_train_log, y_train_log)
+    print(model_log.summary())
+    evaluate_model(model_log, X_test_log, y_test_log, log_transformed=True)
