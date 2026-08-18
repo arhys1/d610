@@ -42,7 +42,8 @@ def add_genre_dummies(df, df_application_genres, df_english_genres):
     return df
 
 ### build regression pipeline
-def prepare_regression_data(df, target_col='mat_final_price', drop_feature_cols=None):
+def prepare_regression_data(df, target_col='mat_final_price', drop_feature_cols=None,
+                             log_transform_target=False, min_genre_count=50):
     """
     Builds X (features) and y (target) for regression.
     Drops identifier/non-feature columns and the other price-related
@@ -51,6 +52,12 @@ def prepare_regression_data(df, target_col='mat_final_price', drop_feature_cols=
     Drops rows with nulls in any remaining feature columns, since OLS
     cannot fit on missing values.
     Creates a drop_feature_cols list to remove columns with many nulls for a more robust analysis on other variables.
+    Drops genre columns with fewer than min_genre_count True values in the
+    resulting data, since sparse/rare genres produce unreliable or
+    unidentifiable coefficients (including exact duplicates when several
+    rare genres always co-occur).
+    Centers release_year on 2003 (Steam's launch year) so the intercept
+    represents a meaningful baseline instead of "predicted price at year 0."
     If log_transform_target is True, applies np.log() to the target column,
     since price is right-skewed. Coefficients on a log-transformed target
     represent approximate percentage effects rather than dollar effects.
@@ -70,9 +77,19 @@ def prepare_regression_data(df, target_col='mat_final_price', drop_feature_cols=
     genre_cols = [c for c in model_df.columns if c.startswith('genre_')]
     model_df[genre_cols] = model_df[genre_cols].astype(int)
 
+    genre_counts = model_df[genre_cols].sum()
+    rare_genre_cols = genre_counts[genre_counts < min_genre_count].index.tolist()
+    if rare_genre_cols:
+        print(f"Dropping {len(rare_genre_cols)} genre column(s) with fewer than {min_genre_count} "
+              f"True values: {rare_genre_cols}")
+        model_df = model_df.drop(columns=rare_genre_cols)
+
+    model_df['release_year'] = model_df['release_year'] - 2003
+
     y = model_df[target_col]
     if log_transform_target:
         y = np.log(y)
+
     X = model_df.drop(columns=[target_col])
 
     return X, y
@@ -98,15 +115,21 @@ def fit_ols_model(X_train, y_train):
 
 def evaluate_model(model, X_test, y_test, log_transformed=False):
     """
-    Evaluates the fitted model on held-out test data using R-squared
-    and RMSE. If log_transformed is True, exponentiates both predictions
-    and actuals back to dollar scale before computing RMSE, so the error
-    is reported in real dollars rather than log-dollars.
+    Evaluates the fitted model on test data using R-squared
+    and RMSE. If log_transformed is True, also reports R-squared in
+    log-space before converting predictions
+    and actuals back to dollars for the RMSE calculation. Log-space R-squared
+    is the more reliable fit metric for a log-transformed model, since
+    exponentiating back to dollars can distort R-squared when price is
+    right-skewed (a few extreme test-set prices).
     """
     X_test_const = sm.add_constant(X_test)
     predictions = model.predict(X_test_const)
 
     if log_transformed:
+        log_r2 = r2_score(y_test, predictions)
+        print(f"Test R-squared (log scale): {log_r2:.4f}")
+
         predictions = np.exp(predictions)
         y_test = np.exp(y_test)
 
