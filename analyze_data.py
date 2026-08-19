@@ -37,7 +37,7 @@ def add_genre_dummies(df, df_application_genres, df_english_genres):
     df = df.merge(genre_multihot, on='appid', how='left')
 
     genre_cols = [c for c in df.columns if c.startswith('genre_')]
-    df[genre_cols] = df[genre_cols].infer_objects(copy=False)
+    df[genre_cols] = df[genre_cols].fillna(False).infer_objects(copy=False)
 
     return df
 
